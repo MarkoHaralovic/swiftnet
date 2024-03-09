@@ -2,3 +2,8 @@ lib/cylib.c
 lib/cylib.cc
 lib/cylib.html
 lib/cylib.so
+
+swiftnet
+datasets/deepglobelcc
+
+**/__pycache__/

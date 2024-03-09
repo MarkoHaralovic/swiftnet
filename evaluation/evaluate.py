@@ -5,6 +5,7 @@ import torch
 from tqdm import tqdm
 from time import perf_counter
 from torchmetrics import ConfusionMatrix
+import seaborn as sns
 
 __all__ = ['compute_errors', 'evaluate_semseg']
 
@@ -12,6 +13,7 @@ __all__ = ['compute_errors', 'evaluate_semseg']
 def compute_errors(conf_mat, class_info, verbose=True):
     num_correct = conf_mat.trace()
     num_classes = conf_mat.shape[0]
+    print(f"Number of classes : {num_classes}")
     total_size = conf_mat.sum()
     avg_pixel_acc = num_correct / total_size * 100.0
     TPFP = conf_mat.sum(1)
@@ -78,5 +80,7 @@ def evaluate_semseg(model, data_loader, class_info, observers=()):
             conf_mat += conf_matrix(pred, gt).numpy().astype(np.uint64)
         print('')
         pixel_acc, iou_acc, recall, precision, _, per_class_iou = compute_errors(conf_mat, class_info, verbose=True)
+        print(conf_mat)
+        sns.heatmap(conf_mat, annot=True)
     model.train()
     return iou_acc, per_class_iou
