@@ -71,6 +71,7 @@ dataset_val = DeepGlobeLLC(root, transforms=trans_val, subset='val')
 
 resnet = resnet18(pretrained=True, efficient=False, mean=mean, std=std, scale=scale)    # we are using resnet pretrained on Imagenet for faster convergence # noqa
 model = SemsegModel(resnet, num_classes)
+
 if evaluating:
     model.load_state_dict(torch.load('/home/mharalovic/swiftnet/swiftnet/weights/rn18_single_scale/62-69_rn18_single_scale/stored/model_best.pt'))        # change the path with your model path # noqa
     model.criterion = SemsegCrossEntropy(num_classes=num_classes, ignore_id=ignore_id)
