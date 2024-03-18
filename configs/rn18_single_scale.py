@@ -15,21 +15,23 @@ from evaluation import StorePreds
 
 from models.util import get_n_params
 
+torch.cuda.empty_cache()
+
 root = Path('datasets/deepglobelcc/455_207_141')      # add symbolic link to datasets folder for different datasets
 path = os.path.abspath(__file__)
 dir_path = os.path.dirname(path)
 
-evaluating = True        # put to True if using the config only for evaluation of already trained model
+evaluating = False      # put to True if using the config only for evaluation of already trained model
 random_crop_size = 768                  # crop size, adjust it if having problems with GPU capacity
 
 scale = 1
-mean = [106.72996836 , 98.30844633 , 73.25440213]            # Whole dataset parameters: [104.09488634 , 96.66853759 , 71.80576166] 
-std = [35.60281465 , 27.68117769 , 26.05693641]           # Stadard deviation of whole dataset: [37.4961336 , 29.24727474, 26.74629693] 
+mean =  [104.09488634 , 96.66853759 , 71.80576166] #of train set [106.72996836 , 98.30844633 , 73.25440213]    
+std = [37.4961336 , 29.24727474, 26.74629693]  #of train set: [35.60281465 , 27.68117769 , 26.05693641]   
 mean_rgb = tuple(np.uint8(scale * np.array(mean)))
 
 num_classes = (
     DeepGlobeLLC.num_classes
-)# if working with something other than Cityscapes, implement and import that class  # noqa
+    )
 ignore_id = DeepGlobeLLC.num_classes
 class_info = DeepGlobeLLC.class_info
 color_info = DeepGlobeLLC.color_info
@@ -40,7 +42,7 @@ target_size_crops_feats = (random_crop_size // 4, random_crop_size // 4)
 target_size = (2448,2448)              # resolution of final feature map, with this it is on full resolution
 target_size_feats = (2448 // 4, 2448 // 4)
 
-eval_each = 4                           # frequency of validation process, it will be each 4 epochs
+eval_each = 4                          # frequency of validation process, it will be each 4 epochs
 
 trans_val = Compose(
     [Open(),
@@ -65,8 +67,7 @@ else:
     )
 
 dataset_train = DeepGlobeLLC(root, transforms=trans_train, subset='train')
-#dataset_val = DeepGlobeLLC(root, transforms=trans_val, subset='val')
-dataset_val = DeepGlobeLLC(root, transforms=trans_train, subset='train')
+dataset_val = DeepGlobeLLC(root, transforms=trans_val, subset='val')
 
 resnet = resnet18(pretrained=True, efficient=False, mean=mean, std=std, scale=scale)    # we are using resnet pretrained on Imagenet for faster convergence # noqa
 model = SemsegModel(resnet, num_classes)
@@ -92,17 +93,16 @@ else:
     optimizer = optim.Adam(optim_params, betas=(0.9, 0.99))
     lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, epochs, lr_min)
 
-batch_size = 2             # batch size should be reduced if your GPU is not big enough for default configuration
+batch_size = 6 # batch size should be reduced if your GPU is not big enough for default configuration
 print(f'Batch size: {batch_size}')
 
 if evaluating:
     loader_train = DataLoader(dataset_train, batch_size=1, collate_fn=custom_collate)
 else:
     loader_train = DataLoader(dataset_train, batch_size=batch_size, shuffle=True, num_workers=4,
-                              pin_memory=True,
+                              pin_memory=False, #changed to false due to RuntimeError: Pin memory thread exited unexpectedly
                               drop_last=True, collate_fn=custom_collate)
-#loader_val = DataLoader(dataset_val, batch_size=1, collate_fn=custom_collate)
-loader_val = DataLoader(dataset_train, batch_size=1, collate_fn=custom_collate)
+loader_val = DataLoader(dataset_val, batch_size=1, collate_fn=custom_collate)
 
 total_params = get_n_params(model.parameters())
 ft_params = get_n_params(model.fine_tune_params())
@@ -113,8 +113,8 @@ print(f'Num params: {total_params:,} = {ran_params:,}(random init) + {ft_params:
 print(f'SPP params: {spp_params:,}')
 
 if evaluating:
-    #eval_loaders = [(loader_val, 'val'), (loader_train, 'train')]
-    eval_loaders = [(loader_val, 'train')]
+    eval_loaders = [(loader_val, 'val'), (loader_train, 'train')]
+    #eval_loaders = [(loader_val, 'train')]
     store_dir = f'{dir_path}/out/'
     for d in ['', 'val', 'train', 'training']:
         os.makedirs(store_dir + d, exist_ok=True)

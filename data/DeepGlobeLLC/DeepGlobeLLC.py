@@ -4,7 +4,6 @@ from .labels import labels
 import pandas as pd
 
 class_info = [label.name for label in labels if label.ignoreInEval is False]
-
 color_info = [label.color for label in labels if label.ignoreInEval is False]
 
 color_info += [[0, 0, 0]]
@@ -25,8 +24,11 @@ class DeepGlobeLLC(Dataset):
     
     #stavio sam srednju vrijednost i std cijelog dataseta
     
-    mean= [104.09488634 , 96.66853759 , 71.80576166]
-    std = [37.4961336 , 29.24727474, 26.74629693]
+    # mean= [104.09488634, 96.66853759 , 71.80576166] / 255
+    # std = [37.4961336 , 29.24727474, 26.74629693] / 255
+    
+    mean = [0.485, 0.456, 0.406]
+    std = [0.229, 0.224, 0.225]
     
     map_to_id = map_to_id
     id_to_map = id_to_map
@@ -36,9 +38,9 @@ class DeepGlobeLLC(Dataset):
         self.labels_dir = self.root / "labels" / "ids" / subset
         self.images_dir = self.root / subset
         self.subset = subset
+        self.has_labels = subset != "test"
         self.transforms = transforms
         self.epoch = epoch
-        self.has_labels = subset != "test"
         
         df = pd.read_csv(root / f'{subset}.csv')
         

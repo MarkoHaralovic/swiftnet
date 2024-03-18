@@ -101,7 +101,7 @@ class Trainer:
                 print(self.conf.epoch)
             self.model.train()
             try:
-                self.conf.lr_scheduler.step()
+                # self.conf.lr_scheduler.step()
                 print(f'Elapsed time: {datetime.datetime.now() - self.experiment_start}')
                 for group in self.optimizer.param_groups:
                     print('LR: {:.4e}'.format(group['lr']))
@@ -117,6 +117,7 @@ class Trainer:
                     loss = self.model.loss(batch)
                     loss.backward()
                     self.optimizer.step()
+                    self.conf.lr_scheduler.step()
                     if step % 80 == 0 and step > 0:
                         curr_t = perf_counter()
                         print(f'{(step * self.conf.batch_size) / (curr_t - start_t):.2f}fps')
@@ -125,6 +126,7 @@ class Trainer:
                     store(self.optimizer, self.store_path, 'optimizer')
                 if eval_epoch and self.args.eval:
                     print('Evaluating model')
+                    # iou, per_class_iou = evaluate_semseg(self.model, self.loader_val, self.dataset_val.class_info)
                     iou, per_class_iou = evaluate_semseg(self.model, self.loader_val, self.dataset_val.class_info)
                     self.validation_ious += [iou]
                     if self.args.eval_train:
