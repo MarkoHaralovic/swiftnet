@@ -20,7 +20,7 @@ id_to_map = {id: i for i, id in map_to_id.items()}
 class DeepGlobeLLC(Dataset):
     class_info = class_info
     color_info = color_info
-    num_classes = 6
+    num_classes = len(class_info)
     
     #stavio sam srednju vrijednost i std cijelog dataseta
     
@@ -38,7 +38,7 @@ class DeepGlobeLLC(Dataset):
         self.labels_dir = self.root / "labels" / "ids" / subset
         self.images_dir = self.root / subset
         self.subset = subset
-        self.has_labels = subset != "test"
+        self.has_labels = True
         self.transforms = transforms
         self.epoch = epoch
         

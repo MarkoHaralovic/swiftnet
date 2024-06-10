@@ -21,8 +21,8 @@ root = Path('datasets/deepglobelcc/455_207_141')      # add symbolic link to dat
 path = os.path.abspath(__file__)
 dir_path = os.path.dirname(path)
 
-evaluating = False      # put to True if using the config only for evaluation of already trained model
-random_crop_size = 768                  # crop size, adjust it if having problems with GPU capacity
+evaluating = True     # put to True if using the config only for evaluation of already trained model
+random_crop_size = 768                # crop size, adjust it if having problems with GPU capacity
 
 scale = 1
 mean =  [104.09488634 , 96.66853759 , 71.80576166] #of train set [106.72996836 , 98.30844633 , 73.25440213]    
@@ -32,11 +32,13 @@ mean_rgb = tuple(np.uint8(scale * np.array(mean)))
 num_classes = (
     DeepGlobeLLC.num_classes
     )
+
 ignore_id = DeepGlobeLLC.num_classes
 class_info = DeepGlobeLLC.class_info
 color_info = DeepGlobeLLC.color_info
 mapping = DeepGlobeLLC.map_to_id
 
+print(f"Training with :{DeepGlobeLLC.num_classes} classes")
 target_size_crops = (random_crop_size, random_crop_size)
 target_size_crops_feats = (random_crop_size // 4, random_crop_size // 4)
 target_size = (2448,2448)              # resolution of final feature map, with this it is on full resolution
@@ -69,11 +71,15 @@ else:
 dataset_train = DeepGlobeLLC(root, transforms=trans_train, subset='train')
 dataset_val = DeepGlobeLLC(root, transforms=trans_val, subset='val')
 
+if evaluating:
+    dataset_test = DeepGlobeLLC(root, transforms=trans_val, subset='test')
+
+
 resnet = resnet18(pretrained=True, efficient=False, mean=mean, std=std, scale=scale)    # we are using resnet pretrained on Imagenet for faster convergence # noqa
 model = SemsegModel(resnet, num_classes)
 
 if evaluating:
-    model.load_state_dict(torch.load('/home/mharalovic/swiftnet/swiftnet/weights/rn18_single_scale/62-69_rn18_single_scale/stored/model_best.pt'))        # change the path with your model path # noqa
+    model.load_state_dict(torch.load('weights/rn18_single_scale/69-86_rn18_single_scale/stored/model_best.pt'))        # change the path with your model path # noqa
     model.criterion = SemsegCrossEntropy(num_classes=num_classes, ignore_id=ignore_id)
 else:
     model.criterion = SemsegCrossEntropy(num_classes=num_classes, ignore_id=ignore_id)
@@ -95,6 +101,7 @@ else:
     lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, epochs, lr_min)
 
 batch_size = 6 # batch size should be reduced if your GPU is not big enough for default configuration
+
 print(f'Batch size: {batch_size}')
 
 if evaluating:
@@ -104,6 +111,8 @@ else:
                               pin_memory=False, #changed to false due to RuntimeError: Pin memory thread exited unexpectedly
                               drop_last=True, collate_fn=custom_collate)
 loader_val = DataLoader(dataset_val, batch_size=1, collate_fn=custom_collate)
+if evaluating:
+    loader_test = DataLoader(dataset_test,batch_size=1,collate_fn=custom_collate)
 
 total_params = get_n_params(model.parameters())
 ft_params = get_n_params(model.fine_tune_params())
@@ -114,10 +123,9 @@ print(f'Num params: {total_params:,} = {ran_params:,}(random init) + {ft_params:
 print(f'SPP params: {spp_params:,}')
 
 if evaluating:
-    eval_loaders = [(loader_val, 'val'), (loader_train, 'train')]
-    #eval_loaders = [(loader_val, 'train')]
+    eval_loaders = [(loader_test, 'test'),(loader_val, 'val'), (loader_train, 'train')]
     store_dir = f'{dir_path}/out/'
-    for d in ['', 'val', 'train', 'training']:
+    for d in ['test','val', 'train']:
         os.makedirs(store_dir + d, exist_ok=True)
     to_color = ColorizeLabels(color_info)
     to_image = Compose([DenormalizeTh(scale, mean, std), Numpy(), to_color])
